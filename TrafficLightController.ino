@@ -37,9 +37,10 @@ enum Lights {
 int lightPins[NUMBER_OF_LIGHTS];
 int activeLight = 0;
 long turnedOnAtMillis = 0;
-long turnOffAfter     = 60000 * 15; // 15 minutes
+long turnOffAfter = 60000 * 15; // 15 minutes
 long currentMillis;
-boolean debug = false;
+boolean debug = true;
+boolean turnGreenOff = false;
 
 boolean processRequest(char* URL)
 {
@@ -69,6 +70,64 @@ boolean processRequest(char* URL)
     activeLight = GREEN;
     turnedOnAtMillis = millis();
     found = true;
+  }
+  else if (strcmp(URL, "/timeLeft") == 0)
+  {
+    WiServer.print("<html>");
+
+    currentMillis = millis();
+    int timeRunning = currentMillis - turnedOnAtMillis;
+
+    if (timeRunning < turnOffAfter)
+      WiServer << "green will turn off in " << ((turnOffAfter - timeRunning) / 60000) << " minutes";
+    else
+      WiServer.print("green light turned off already");
+
+    WiServer.print("</html>");
+    return true;
+  }
+  else if (
+      (strcmp(URL, "/status") == 0) ||
+      (strcmp(URL, "/active") == 0)
+      )
+  {
+    WiServer.print("<html>");
+
+    switch(activeLight)
+    {
+      case RED:
+        WiServer.print("red");
+        break;
+      case GREEN:
+        WiServer.print("green");
+        break;
+      case YELLOW:
+        WiServer.print("yellow");
+        break;
+      case OFF:
+        WiServer.print("off");
+        break;
+    }
+
+    WiServer.print("</html>");
+    return true;
+  }
+  else if (strcmp(URL, "/turnGreenOff") == 0)
+  {
+    turnGreenOff = !turnGreenOff;
+    WiServer.print("<html>");
+
+    if (turnGreenOff)
+      WiServer << "green will turn off after " << (turnOffAfter / 60000) << " minutes";
+    else
+      WiServer.print("green stays on");
+
+    WiServer.print("</html>");
+    return true;
+  }
+  else
+  {
+    WiServer.print("<html>Invalid</html>");
   }
 
   if (found)
@@ -120,7 +179,7 @@ void loop()
   WiServer.server_task();
 
   // Turn off green light after turnOffAfter milliseconds passed.
-  if (activeLight == GREEN)
+  if (activeLight == GREEN && turnGreenOff)
   {
     currentMillis = millis();
 
